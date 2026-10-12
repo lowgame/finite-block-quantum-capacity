@@ -36,6 +36,21 @@ The small-system checks compare the reduced channel with a full computational-ba
 
 These are exploratory floating-point searches. A positive numerical result needs a separate interval calculation before it supports a certified claim.
 
+The general search driver `capacity_experiment/optimize.py` accepts rank-two
+`.c128` files (the block length is inferred from the file) and NPZ files with
+either `psi` or `purification`. Optional `--n` pads a shorter input to that
+block length; it never silently truncates it. For example:
+
+```sh
+.venv/bin/python capacity_experiment/optimize.py \
+  --input input.c128 --p 0.1949 --maxiter 100 --output replays/search
+.venv/bin/python capacity_experiment/validation/run_optimizer_cli_checks.py
+```
+
+The input loader was corrected after the original code release, which assumed
+45-qubit raw files and the NPZ key `psi`. The channel and interval evaluators
+and the frozen manuscript inputs are unchanged.
+
 ## Verify a supplied input
 
 For a local `input.c128` containing little-endian complex128 coefficients with shape `(reference_rank, n+1)`:

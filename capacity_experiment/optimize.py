@@ -4,9 +4,35 @@ import argparse, json, time
 from pathlib import Path
 import numpy as np
 from scipy.optimize import minimize
-from core import SymmetricDepolarizing, load_payload
+from core import SymmetricDepolarizing
 
 ROOT=Path(__file__).resolve().parent
+
+def load_search_input(path):
+    """Load a rank-two raw input, or either supported NPZ coefficient key.
+
+    Raw files have two reference rows and n+1 ascending Dicke coordinates.
+    Their block length is inferred before --n optionally pads the input.
+    """
+    path=Path(path)
+    if path.suffix == '.c128':
+        data=np.fromfile(path,dtype='<c16')
+        if data.size < 4 or data.size % 2:
+            raise ValueError('Raw input must contain two complete reference rows.')
+        psi=data.reshape(2,data.size//2)
+    else:
+        with np.load(path,allow_pickle=False) as archive:
+            keys=[key for key in ('psi','purification') if key in archive]
+            if not keys:
+                raise ValueError('NPZ input requires a psi or purification coefficient array.')
+            psi=np.asarray(archive[keys[0]],dtype=complex).copy()
+            if len(keys)>1 and not np.array_equal(psi,archive[keys[1]]):
+                raise ValueError('NPZ contains conflicting psi and purification arrays.')
+    if psi.ndim != 2 or psi.shape[0] != 2 or psi.shape[1] < 2:
+        raise ValueError('Search input must have shape (2,n+1), with n>=1.')
+    if not np.isfinite(psi).all() or not np.any(psi):
+        raise ValueError('Search input must be finite and nonzero.')
+    return psi
 
 def optimize_state(psi,p,output,maxiter=300,real=False,mask=None,seed=20261011,cutoff=None):
     psi=np.asarray(psi,complex);psi/=np.linalg.norm(psi)
@@ -61,7 +87,7 @@ if __name__=='__main__':
     ap.add_argument('--real',action='store_true');ap.add_argument('--n',type=int);ap.add_argument('--kick',type=float,default=0.)
     ap.add_argument('--seed',type=int,default=20261011);args=ap.parse_args()
     path=Path(args.input)
-    psi=load_payload(path) if path.suffix=='.c128' else np.load(path)['psi']
+    psi=load_search_input(path)
     if args.n and args.n!=psi.shape[1]-1:
         if args.n<psi.shape[1]-1:raise ValueError('Truncation must be explicit, not silently applied.')
         psi=np.pad(psi,((0,0),(0,args.n+1-psi.shape[1])))
