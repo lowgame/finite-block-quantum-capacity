@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+replays/
+capacity_experiment/cache/
+*.npz
+*.npy
+*.c128
+*.json
+*.jsonl
+*.log
+*.csv
+*.png
+*.svg
+*.pdf
